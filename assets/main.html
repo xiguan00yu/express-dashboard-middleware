@@ -8,12 +8,119 @@
     </title>
     <meta name="description" content="" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma-switch@2.0.4/dist/css/bulma-switch.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
 </head>
 <script type="module">
     import { render } from 'https://cdn.skypack.dev/preact';
+    import { useRef, useEffect, useState } from 'https://cdn.skypack.dev/preact/hooks';
     import { html } from 'https://cdn.skypack.dev/htm/preact';
-    // render(html`<a href="/">Hello!</a>`, document.body);
+    // render tile list
+    async function fetchItems() {
+        const res = await fetch('dashboard/items')
+        const data = await res.json()
+        return data
+    }
+    async function postItems(items) {
+        const res = await fetch('dashboard/items', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(items)
+        })
+        const data = await res.json()
+        return data
+    }
+    function TileList() {
+        const [tiles, setTiles] = useState([{
+            title: '-',
+            subitle: 'Number of switches'
+        }, {
+            title: '1 min',
+            subitle: 'Logout time remaining'
+        }])
+        useEffect(() => {
+            fetchItems()
+                .then(list => setTiles(tiles => {
+                    tiles[0].title = Object.keys(list).length
+                    return [...tiles]
+                }))
+        }, [])
+        return html`
+        <div class="tile is-ancestor has-text-centered">
+            ${tiles.map(({ title, subitle }) =>
+            html`<div class="tile is-parent">
+                    <article class="tile is-child box">
+                        <p class="title">${title}</p>
+                        <p class="subtitle">${subitle}</p>
+                    </article>
+                </div>`)}
+        </div>`
+    }
+    render(html`<${TileList} />`, document.getElementById('info-tiles'));
+    // render table list
+    function TableBody() {
+        const queryStr = window.__queryString
+        const [list, setList] = useState({})
+        useEffect(() => {
+            fetchItems()
+                .then(setList)
+        }, [])
+        const onChange = (event) => {
+            if (!event.target) return
+            const key = event.target.id
+            const value = event.target.checked
+            postItems({ [key]: value ? '1' : '0' }).then((a) => {
+                console.log(a)
+            })
+        }
+        return Object
+            .entries(list)
+            .filter(([key]) => !queryStr || key.includes(queryStr))
+            .map(([key, value]) =>
+                html`<tr style="justify-content: space-between;align-items: center;display: flex;">
+                <td width="5%"><i class="fa fa-flag"></i></td>
+                <td>${key}</td>
+                <td class="level-right">
+                    <input onChange=${onChange} id=${key} type="checkbox" name="switchOutlinedDefault" class="switch is-outlined" checked=${value === '1'} />
+                    <label for=${key}></label>
+                </td>
+            </tr>`
+            )
+    }
+    function renderTable() {
+        render(
+            html`<${TableBody} />`,
+            document.getElementById('table-body')
+        );
+    }
+    renderTable()
+    // render table query
+    function TableQuery() {
+        const onChange = (event) => {
+            if (!event.target) return
+            // global
+            window.__queryString = event.target.value
+            // updaete render
+            renderTable()
+        }
+        return html`<div class="control has-icons-left has-icons-right">
+                        <input onChange=${onChange} class="input is-large" type="text" placeholder=""/>
+                        <span class="icon is-medium is-left">
+                            <i class="fa fa-search"></i>
+                        </span>
+                        <span class="icon is-medium is-right">
+                            <i class="fa fa-check"></i>
+                        </span>
+                    </div>`
+    }
+    render(
+        html`<${TableQuery} />`,
+        document.getElementById('table-query')
+    );
 </script>
 
 <body>
@@ -22,7 +129,7 @@
     <nav class="navbar is-white">
         <div class="container">
             <div class="navbar-brand">
-                <a class="navbar-item brand-text is-size-3" href="../index.html">
+                <a class="navbar-item brand-text is-size-3">
                     <<$title>>
                 </a>
             </div>
@@ -56,33 +163,8 @@
                         </div>
                     </div>
                 </section>
-                <section class="info-tiles">
-                    <div class="tile is-ancestor has-text-centered">
-                        <div class="tile is-parent">
-                            <article class="tile is-child box">
-                                <p class="title">439k</p>
-                                <p class="subtitle">Users</p>
-                            </article>
-                        </div>
-                        <div class="tile is-parent">
-                            <article class="tile is-child box">
-                                <p class="title">59k</p>
-                                <p class="subtitle">Products</p>
-                            </article>
-                        </div>
-                        <div class="tile is-parent">
-                            <article class="tile is-child box">
-                                <p class="title">3.4k</p>
-                                <p class="subtitle">Open Orders</p>
-                            </article>
-                        </div>
-                        <div class="tile is-parent">
-                            <article class="tile is-child box">
-                                <p class="title">19</p>
-                                <p class="subtitle">Exceptions</p>
-                            </article>
-                        </div>
-                    </div>
+                <section id="info-tiles" class="info-tiles">
+                    <!-- wait render -->
                 </section>
                 <div class="columns">
                     <div class="column is-6">
@@ -97,78 +179,25 @@
                                     </span>
                                 </a>
                             </header>
-                            <div class="card-table">
+                            <div class="card-content">
                                 <div class="content">
                                     <table class="table is-fullwidth is-striped">
-                                        <tbody>
-                                            <tr>
-                                                <td width="5%"><i class="fa fa-bell-o"></i></td>
-                                                <td>Lorum ipsum dolem aire</td>
-                                                <td class="level-right"><a class="button is-small is-primary"
-                                                        href="#">Action</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td width="5%"><i class="fa fa-bell-o"></i></td>
-                                                <td>Lorum ipsum dolem aire</td>
-                                                <td class="level-right"><a class="button is-small is-primary"
-                                                        href="#">Action</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td width="5%"><i class="fa fa-bell-o"></i></td>
-                                                <td>Lorum ipsum dolem aire</td>
-                                                <td class="level-right"><a class="button is-small is-primary"
-                                                        href="#">Action</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td width="5%"><i class="fa fa-bell-o"></i></td>
-                                                <td>Lorum ipsum dolem aire</td>
-                                                <td class="level-right"><a class="button is-small is-primary"
-                                                        href="#">Action</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td width="5%"><i class="fa fa-bell-o"></i></td>
-                                                <td>Lorum ipsum dolem aire</td>
-                                                <td class="level-right"><a class="button is-small is-primary"
-                                                        href="#">Action</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td width="5%"><i class="fa fa-bell-o"></i></td>
-                                                <td>Lorum ipsum dolem aire</td>
-                                                <td class="level-right"><a class="button is-small is-primary"
-                                                        href="#">Action</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td width="5%"><i class="fa fa-bell-o"></i></td>
-                                                <td>Lorum ipsum dolem aire</td>
-                                                <td class="level-right"><a class="button is-small is-primary"
-                                                        href="#">Action</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td width="5%"><i class="fa fa-bell-o"></i></td>
-                                                <td>Lorum ipsum dolem aire</td>
-                                                <td class="level-right"><a class="button is-small is-primary"
-                                                        href="#">Action</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td width="5%"><i class="fa fa-bell-o"></i></td>
-                                                <td>Lorum ipsum dolem aire</td>
-                                                <td class="level-right"><a class="button is-small is-primary"
-                                                        href="#">Action</a></td>
-                                            </tr>
+                                        <tbody id="table-body">
+                                            <!-- await render -->
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
-                            <footer class="card-footer">
+                            <!-- <footer class="card-footer">
                                 <a href="#" class="card-footer-item">View All</a>
-                            </footer>
+                            </footer> -->
                         </div>
                     </div>
                     <div class="column is-6">
                         <div class="card">
                             <header class="card-header">
                                 <p class="card-header-title">
-                                    Inventory Search
+                                    Search
                                 </p>
                                 <a href="#" class="card-header-icon" aria-label="more options">
                                     <span class="icon">
@@ -177,41 +206,8 @@
                                 </a>
                             </header>
                             <div class="card-content">
-                                <div class="content">
-                                    <div class="control has-icons-left has-icons-right">
-                                        <input class="input is-large" type="text" placeholder="">
-                                        <span class="icon is-medium is-left">
-                                            <i class="fa fa-search"></i>
-                                        </span>
-                                        <span class="icon is-medium is-right">
-                                            <i class="fa fa-check"></i>
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <header class="card-header">
-                                <p class="card-header-title">
-                                    User Search
-                                </p>
-                                <a href="#" class="card-header-icon" aria-label="more options">
-                                    <span class="icon">
-                                        <i class="fa fa-angle-down" aria-hidden="true"></i>
-                                    </span>
-                                </a>
-                            </header>
-                            <div class="card-content">
-                                <div class="content">
-                                    <div class="control has-icons-left has-icons-right">
-                                        <input class="input is-large" type="text" placeholder="">
-                                        <span class="icon is-medium is-left">
-                                            <i class="fa fa-search"></i>
-                                        </span>
-                                        <span class="icon is-medium is-right">
-                                            <i class="fa fa-check"></i>
-                                        </span>
-                                    </div>
+                                <div id="table-query" class="content">
+                                    <!-- wait render -->
                                 </div>
                             </div>
                         </div>
