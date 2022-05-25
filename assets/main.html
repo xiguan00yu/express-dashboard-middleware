@@ -1,4 +1,4 @@
-<html>
+<html style="overflow-y: auto;">
 
 <head>
     <meta charset="utf-8" />
@@ -16,7 +16,24 @@
     import { render } from 'https://cdn.skypack.dev/preact';
     import { useRef, useEffect, useState } from 'https://cdn.skypack.dev/preact/hooks';
     import { html } from 'https://cdn.skypack.dev/htm/preact';
-    // render tile list
+    // global auth
+    let auth = false;
+    async function login(pwd) {
+        try {
+            const res = await fetch('dashboard/verify', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ pwd })
+            })
+            const data = await res.json()
+            return data && !!data.ok
+        } catch (error) {
+            return false
+        }
+    }
     async function fetchItems() {
         const res = await fetch('dashboard/items')
         const data = await res.json()
@@ -34,12 +51,13 @@
         const data = await res.json()
         return data
     }
+    // render tile list
     function TileList() {
         const [tiles, setTiles] = useState([{
             title: '-',
             subitle: 'Number of switches'
         }, {
-            title: '1 min',
+            title: '-',
             subitle: 'Logout time remaining'
         }])
         useEffect(() => {
@@ -60,7 +78,9 @@
                 </div>`)}
         </div>`
     }
-    render(html`<${TileList} />`, document.getElementById('info-tiles'));
+    function renderTileList() {
+        render(html`<${TileList} />`, document.getElementById('info-tiles'));
+    }
     // render table list
     function TableBody() {
         const queryStr = window.__queryString
@@ -97,7 +117,6 @@
             document.getElementById('table-body')
         );
     }
-    renderTable()
     // render table query
     function TableQuery() {
         const onChange = (event) => {
@@ -117,13 +136,78 @@
                         </span>
                     </div>`
     }
-    render(
-        html`<${TableQuery} />`,
-        document.getElementById('table-query')
-    );
+    function renderTableQuery() {
+        render(
+            html`<${TableQuery} />`,
+            document.getElementById('table-query')
+        );
+    }
+    // render login model
+    function closeModel() {
+        document.getElementById('modal').classList.remove('is-active');
+    }
+    function openModal() {
+        document.getElementById('modal').classList.add('is-active');
+    }
+    function AuthBox() {
+        const inputRef = useRef()
+        const onClick = async () => {
+            const pwd = inputRef.current.value
+            if (!pwd || pwd.length < 6) {
+                return
+            }
+            const res = await login(pwd)
+            if (!!res) {
+                closeModel()
+                auth = true
+                renderTileList()
+                renderTable()
+                renderTableQuery()
+            }
+        }
+        // TODO
+        return html`<>
+            <h1 class="title">Root</h1>
+            <div class="field">
+                <p class="control has-icons-left">
+                    <input ref=${inputRef} class="input" type="password" placeholder="Password">
+                    <span class="icon is-small is-left">
+                        <i class="fa fa-lock"></i>
+                    </span>
+                </p>
+            </div>
+            <button class="button is-fullwidth is-primary mt-3" onClick=${onClick}>Log-in</button>
+        </>`
+    }
+    function renderAuthBox() {
+        render(
+            html`<${AuthBox} />`,
+            document.getElementById('auth-box')
+        );
+    }
+    // renderAuthBox()
+    // main logic
+    function main() {
+        fetchItems()
+            .then(() => {
+                // auth success
+                closeModel()
+                auth = true
+                renderTileList()
+                renderTable()
+                renderTableQuery()
+            })
+            .catch(() => {
+                // auth fail
+                renderAuthBox()
+                openModal()
+                auth = false
+            })
+    }
+    main()
 </script>
 
-<body>
+<body style="width: 100vw;height: 100vh;">
     <!-- default dom -->
     <!-- START NAV -->
     <nav class="navbar is-white">
@@ -213,6 +297,14 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    <div id="modal" class="modal">
+        <div class="modal-background"></div>
+        <div class="modal-content">
+            <div id="auth-box" class="box" style="min-width: 350px;width: 50%;margin: 0 auto;">
+                <!-- await render -->
             </div>
         </div>
     </div>
