@@ -15,6 +15,7 @@
     "rollup": "^2.74.1"
   },
   "dependencies": {
+    "node-2fa": "^2.0.3",
     "redis": "^4.1.0"
   }
 }

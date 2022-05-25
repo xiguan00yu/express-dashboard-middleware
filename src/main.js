@@ -1,9 +1,20 @@
 const redis = require("redis");
 const fs = require("fs");
 const path = require("path");
+const twofactor = require("node-2fa");
 
 function btoc(method, url) {
   return `${method}${url}`;
+}
+
+function parseCookie(str) {
+  return str
+    .split(";")
+    .map((v) => v.split("="))
+    .reduce((acc, v) => {
+      acc[decodeURIComponent(v[0].trim())] = decodeURIComponent(v[1].trim());
+      return acc;
+    }, {});
 }
 
 export const DataProvider = function (
@@ -41,7 +52,8 @@ export const DataProvider = function (
 
 export const SafeSessions = function (
   options = {
-    secret: "2fa",
+    secret: "GJEEOS3YHGMEIKKXCQAL3QXIWU7R7NH3",
+    salt: "2fa",
     age: 1000 * 60 * 15,
   }
 ) {
@@ -51,6 +63,13 @@ export const SafeSessions = function (
   this.cookieKey = function () {
     return "switch-dashborad-middleware";
   };
+
+  // login verify
+  this.verifyAuth = function (pwd) {
+    const res = twofactor.verifyToken(options.secret, pwd);
+    return res && res.delta === 0;
+  };
+
   // check cookie
   // return bool
   this.checkCookie = function (cookie) {
@@ -58,7 +77,7 @@ export const SafeSessions = function (
     if (typeof cookie !== "string") return false;
     // decrypt
     const key = Buffer.from(cookie, "base64").toString("utf8");
-    if (!key.includes(options.secret)) {
+    if (!key.includes(options.salt)) {
       return false;
     }
     const body = this.store[cookie];
@@ -77,7 +96,7 @@ export const SafeSessions = function (
     }
     // encrypt
     const sessionsKey = Buffer.from(
-      `${options.secret}${Date.now()}${Math.round(Math.random() * 1000)}`
+      `${options.salt}${Date.now()}${Math.round(Math.random() * 1000)}`
     ).toString("base64");
 
     // only one
@@ -95,15 +114,6 @@ const defaultOptions = {
   safeChecker: new SafeSessions(),
   htmlArgs: { title: "Hi! Dashboard" },
 };
-
-const parseCookie = (str) =>
-  str
-    .split(";")
-    .map((v) => v.split("="))
-    .reduce((acc, v) => {
-      acc[decodeURIComponent(v[0].trim())] = decodeURIComponent(v[1].trim());
-      return acc;
-    }, {});
 
 // const secret = "l2022dashboard";
 
@@ -147,7 +157,7 @@ export default function (options) {
       // get items alllll yes!!
       case `GET${options.dashboardUrl}/items`:
         if (!isLogin(req)) {
-          return res.status(403).send({});
+          return res.status(403).end();
         }
         options.dataProvider
           .getItems()
@@ -157,7 +167,7 @@ export default function (options) {
       // set items status ohhh
       case `POST${options.dashboardUrl}/items`:
         if (!isLogin(req)) {
-          return res.status(403).send({});
+          return res.status(403).end();
         }
         if (!req.body || typeof req.body !== "object") {
           throw new Error("req.body no get object");
@@ -167,6 +177,19 @@ export default function (options) {
           .then(() => res.json({ ok: true }))
           .catch((err) => res.status(501).send(err.toString()));
         break;
+      case `POST${options.dashboardUrl}/verify`:
+        // TODO
+        if (!req.body || typeof req.body !== "object") {
+          throw new Error("req.body no get object");
+        }
+        if (!req.body.pwd || typeof req.body.pwd !== "string") {
+          return res.status(501).send("req.body pwd error");
+        }
+        if (options.safeChecker.verifyAuth(req.body.pwd)) {
+          login(req, res);
+          return res.json({ ok: true });
+        }
+        return res.status(403).end();
       default:
         next();
     }
