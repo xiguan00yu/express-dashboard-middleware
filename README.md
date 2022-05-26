@@ -3,6 +3,11 @@
 
 > A middleware providing dashboard, free to modify variables and control everything in the program.
 
+### I. Preview
+
+![Login](https://github.com/xiguan00yu/express-dashboard-middleware/blob/main/preview/login-screen.png "Login")
+
+![Dash](https://github.com/xiguan00yu/express-dashboard-middleware/blob/main/preview/dashboard-screen.png "Dashboard")
 
 ### I. How to use
 
