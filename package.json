@@ -1,9 +1,9 @@
 {
-  "name": "switcher-web",
+  "name": "express-dashboard",
   "version": "0.0.1",
   "description": "a middleware providing dashboard, free to modify variables and control everything in the program.",
   "main": "dist/bundle.js",
-  "repository": "xiguan00yu/switcher-web",
+  "repository": "xiguan00yu/express-dashboard-middleware",
   "scripts": {
     "build": "rollup --config rollup.config.js",
     "dev": "rollup -w --config rollup.config.js"
