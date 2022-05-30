@@ -1,6 +1,6 @@
 {
   "name": "express-dashboard",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "a middleware providing dashboard, free to modify variables and control everything in the program.",
   "main": "dist/bundle.js",
   "repository": "xiguan00yu/express-dashboard-middleware",

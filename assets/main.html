@@ -62,8 +62,9 @@
         }])
         useEffect(() => {
             fetchItems()
-                .then(list => setTiles(tiles => {
-                    tiles[0].title = Object.keys(list).length
+                .then(({ data, expires }) => setTiles(tiles => {
+                    tiles[0].title = Object.keys(data).length
+                    tiles[1].title = Math.round((expires - Date.now()) / 1000 / 60) + ' min'
                     return [...tiles]
                 }))
         }, [])
@@ -87,7 +88,7 @@
         const [list, setList] = useState({})
         useEffect(() => {
             fetchItems()
-                .then(setList)
+                .then(({ data }) => setList(data))
         }, [])
         const onChange = (event) => {
             if (!event.target) return

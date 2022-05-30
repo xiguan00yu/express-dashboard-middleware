@@ -41,3 +41,7 @@
     - `POST /dashboard/verify` -> use `SafeSessions.verifyAuth` and `SafeSessions.newCookie` to generate a new session
 
     > It's worth saying that you can customize the path `options.dashboardUrl`
+
+### I. Update Version
+
+- [x] 0.0.2 add session expires display.

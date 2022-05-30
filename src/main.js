@@ -69,7 +69,19 @@ export const SafeSessions = function (
     const res = twofactor.verifyToken(options.secret, pwd);
     return res && res.delta === 0;
   };
-
+  // by cookie get age
+  this.getCookieAge = function (cookie) {
+    if (!cookie) return -1;
+    if (typeof cookie !== "string") return -1;
+    // decrypt
+    const key = Buffer.from(cookie, "base64").toString("utf8");
+    if (!key.includes(options.salt)) {
+      return -1;
+    }
+    const body = this.store[cookie];
+    // Determine whether it is overdue
+    return body.age;
+  };
   // check cookie
   // return bool
   this.checkCookie = function (cookie) {
@@ -121,11 +133,21 @@ export default function (options) {
   options = Object.assign({}, defaultOptions, options);
 
   const isLogin = (req) => {
-    if (!options.safeChecker) throw new Error("pls provide SafeSessions");
+    if (!options.safeChecker)
+      throw new Error("pls provide SafeSessions.checkCookie");
     const cookies =
       typeof req.headers.cookie === "string" && parseCookie(req.headers.cookie);
     const key = options.safeChecker.cookieKey();
     return options.safeChecker.checkCookie(cookies[key]);
+  };
+
+  const getSessionAge = (req) => {
+    if (!options.safeChecker)
+      throw new Error("pls provide SafeSessions.getCookieAge");
+    const cookies =
+      typeof req.headers.cookie === "string" && parseCookie(req.headers.cookie);
+    const key = options.safeChecker.cookieKey();
+    return options.safeChecker.getCookieAge(cookies[key]);
   };
 
   const login = (req, res) => {
@@ -159,9 +181,10 @@ export default function (options) {
         if (!isLogin(req)) {
           return res.status(403).end();
         }
+        const expires = getSessionAge(req);
         options.dataProvider
           .getItems()
-          .then((val) => res.json(val))
+          .then((val) => res.json({ data: val, expires }))
           .catch((err) => res.status(502).send(err.toString()));
         break;
       // set items status ohhh
